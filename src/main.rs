@@ -1,5 +1,5 @@
 use core::time;
-use std::{os::unix::thread, path::Path, process::exit};
+use std::{path::Path, process::exit, time::SystemTime};
 
 use prompted::{input};
 mod data_finder;
@@ -19,14 +19,30 @@ fn main() {
     println!("Positive feedback: {}",feedback.positive_amount);
     println!("Negative feedback: {}",feedback.negative_amount);
 
+    let mut start = SystemTime::now();
+
     let conversations = data_finder::load_conversations(path);
-    
+    println!("Loaded JSON in {}ms", start.elapsed().expect("Invalid time decoding").as_millis().to_string());
+
+    start = SystemTime::now();
+
     let analysis: data_finder::Analysis = data_finder::analyze_conversations(conversations);
+    println!("Analyzed in {}ms", start.elapsed().expect("Invalid time decoding").as_millis().to_string());
 
     println!("Amount of chats: {}", analysis.chat_amount);
     println!("Unfinished messages: {}", analysis.unfinished_messages);
-    println!("CHATGPT messages: {}", analysis.messages_from_chatgpt);
-    println!("USER messages: {}", analysis.messages_from_user);
+    println!("Messages from ChatGPT (not accurate): {}", analysis.messages_from_chatgpt);
+    println!("Messages from you: {}", analysis.messages_from_user);
     println!("First message: {} - ({})", analysis.oldest_message_time, analysis.oldest_message_id);
+
+    println!("\nModels used: (model: uses). WARNING: Not entirely accurate");
+    for (model, uses) in analysis.models_used.into_iter() {
+        println!("{}: {}", model, uses)
+    }
+
+    println!("\nContent types: (type: uses). WARNING: Not entirely accurate");
+    for (content_type, uses) in analysis.content_types.into_iter() {
+        println!("{}: {}", content_type, uses);
+    }
 }
 
