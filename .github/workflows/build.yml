@@ -112,10 +112,14 @@ jobs:
           path: target/release/chatgpt-analyzer
 
   release:
-    name: 🚀 Publish GitHub Release
+    name: Publish GitHub Release
     needs: [build-linux, build-windows, build-macos]
     runs-on: ubuntu-latest
     steps:
+      - name: Get timestamp for tag
+        id: get_time
+        run: echo "tag_name=$(date +'%Y-%m-%d-%H-%M')" >> "$GITHUB_OUTPUT"
+
       - name: Download Linux artifact
         uses: actions/download-artifact@v4
         with:
@@ -134,11 +138,18 @@ jobs:
           name: chatgpt-analyzer-macos
           path: artifacts/macos
 
+      - name: Create Git Tag
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag ${{ steps.get_time.outputs.tag_name }}
+          git push origin ${{ steps.get_time.outputs.tag_name }}
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          name: Release ${{ github.sha }}
-          tag_name: ${{ github.sha }}
+          name: Release ${{ steps.get_time.outputs.tag_name }}
+          tag_name: ${{ steps.get_time.outputs.tag_name }}
           files: |
             artifacts/linux/chatgpt-analyzer
             artifacts/windows/chatgpt-analyzer.exe
