@@ -1,11 +1,14 @@
-use std::{collections::HashSet, fs::File, hash::Hash, io::Read, path::Path, time::{SystemTime, UNIX_EPOCH}};
+use std::{fs::File, io::Read, path::Path, time::{SystemTime, UNIX_EPOCH}};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 #[derive(Serialize, Deserialize, PartialEq)]
 enum Rating {
-    thumbs_down,
-    thumbs_up
+    #[serde(alias="thumbs_up")]
+    ThumbsUp,
+
+    #[serde(alias="thumbs_down")]
+    ThumbsDown
 }
 
 #[derive(Serialize, Deserialize)]
@@ -163,8 +166,8 @@ pub fn find_feedback(path: &Path) -> Feedback {
 
 
     return Feedback { 
-        positive_amount: feedbacks.iter().filter(|f| f.rating == Rating::thumbs_up).count() as i32,
-        negative_amount: feedbacks.iter().filter(|f| f.rating == Rating::thumbs_down).count() as i32,
+        positive_amount: feedbacks.iter().filter(|f| f.rating == Rating::ThumbsUp).count() as i32,
+        negative_amount: feedbacks.iter().filter(|f| f.rating == Rating::ThumbsDown).count() as i32,
     }
 }
 

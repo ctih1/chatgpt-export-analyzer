@@ -1,4 +1,3 @@
-use core::time;
 use std::{path::Path, process::exit, time::SystemTime};
 
 use prompted::{input};
