@@ -150,14 +150,19 @@ jobs:
           git tag ${{ steps.get_time.outputs.tag_name }}
           git push origin ${{ steps.get_time.outputs.tag_name }}
 
+      - name: Rename Artifacts
+        run: |
+          mv artifacts/linux/chatgpt-analyzer artifacts/linux/chatgpt-analyzer-linux
+          mv artifacts/macos/chatgpt-analyzer artifacts/macos/chatgpt-analyzer-macos
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           name: Release ${{ steps.get_time.outputs.tag_name }}
           tag_name: ${{ steps.get_time.outputs.tag_name }}
           files: |
-            artifacts/linux/chatgpt-analyzer
+            artifacts/linux/chatgpt-analyzer-linux
             artifacts/windows/chatgpt-analyzer.exe
-            artifacts/macos/chatgpt-analyzer
+            artifacts/macos/chatgpt-analyzer-macos
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
