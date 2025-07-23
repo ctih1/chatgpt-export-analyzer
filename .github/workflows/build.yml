@@ -112,10 +112,15 @@ jobs:
           path: target/release/chatgpt-analyzer
 
   release:
-    name: Publish GitHub Release
+    name: 🚀 Publish GitHub Release
     needs: [build-linux, build-windows, build-macos]
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
       - name: Get timestamp for tag
         id: get_time
         run: echo "tag_name=$(date +'%Y-%m-%d-%H-%M')" >> "$GITHUB_OUTPUT"
