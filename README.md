@@ -3,6 +3,9 @@ Analyze your ChatGPT stats
 
 ![the software](.github/imgs/screenshot_data.png)
 
+## Warning
+Since everyone's data package is a bit different, it is possible that this won't work for you. Please file an issue report on this Github page if you counter any issues
+
 ## How to get the sweet data?
 ### 1. Go to https://chatgpt.com
 

@@ -1,4 +1,4 @@
-use std::{alloc::System, collections::HashMap, path::Path, process::exit, time::{Duration, SystemTime}};
+use std::{collections::HashMap, path::Path, process::exit, time::{Duration, SystemTime}};
 
 
 use chrono::{DateTime, Datelike, Local, NaiveDate, NaiveTime};
@@ -134,7 +134,7 @@ fn draw(frame: &mut Frame, analysis: &Analysis, feedback: &Feedback, selected_ta
                 format!("Chats from ChatGPT (not accurate): {}", analysis.messages_from_chatgpt),
                 format!("Your first message: {}", DateTime::from_timestamp(analysis.oldest_message_time.trunc() as i64 ,0).expect("Invalid oldest date!").format("%H:%M:%S %d/%m/%Y")),
                 format!("First chat link (may not work): https://chatgpt.com/c/{}", analysis.oldest_message_id),
-                format!("Voices used {}", analysis.voices_used.join(",")),
+                format!("Voices used: {}", analysis.voices_used.join(",")),
                 format!("Feedback positivity: {}% (positive: {}, negative: {})", feedback.positive_amount as f64 / (feedback.positive_amount as f64 + feedback.negative_amount as f64) * 100.0, feedback.positive_amount, feedback.negative_amount)
             ])
                 .block(Block::bordered().title("Basic information"))
