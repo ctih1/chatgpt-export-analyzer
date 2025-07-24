@@ -1,5 +1,6 @@
 use std::{fs::File, io::Read, path::Path, time::{SystemTime, UNIX_EPOCH}};
 use serde::{Deserialize, Serialize};
+use url::Url;
 use std::collections::HashMap;
 
 #[derive(Serialize, Deserialize, PartialEq)]
@@ -120,12 +121,40 @@ pub enum ContentInner {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+pub struct MetadataCitationExtra {
+    cited_message_idx: i32,
+    search_result_idx: Option<i32>,
+    evidence_text: String,
+    cloud_doc_url: Option<String>
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct MetadataListItem {
+    #[serde(alias="type")]
+    metadata_type: String,
+    
+    title: String,
+    url: String,
+    text: String,
+    pub_date: Option<String>,
+    extra: Option<MetadataCitationExtra>
+}
+#[derive(Debug, Serialize, Deserialize)]
+pub struct CitationMetadata {
+    citation_format: HashMap<String, String>,
+    metadata_list: Vec<MetadataListItem>
+}
+
+#[derive(Debug, Serialize, Deserialize)]
 pub struct MessageMetadata {
     #[serde(default)]
     pub is_visually_hidden_from_conversation: Option<bool>,
 
     #[serde(default)]
     pub user_context_message_data: Option<UserContextData>,
+    
+    #[serde(alias="_cite_metadata")]
+    pub cite_metadata: Option<CitationMetadata>,
 
     #[serde(flatten)]
     pub other: HashMap<String, serde_json::Value>,
@@ -154,7 +183,12 @@ pub struct Analysis {
     pub messages_sent: Vec<f64>,
     pub content_types: HashMap<String, i32>,
     pub oldest_message_time: f64,
-    pub oldest_message_id: String
+    pub oldest_message_id: String,
+    pub authors: HashMap<String, i32>,
+    pub voices_used: Vec<String>,
+    pub searched_websites: HashMap<String, i32>,
+    pub website_paths: HashMap<String, i32>,
+    pub words: HashMap<String, i32>
 }
 
 pub fn find_feedback(path: &Path) -> Feedback {
@@ -192,10 +226,19 @@ pub fn analyze_conversations(conversations: Vec<ConversationRoot>) -> Analysis {
         messages_sent: vec![],
         oldest_message_time: SystemTime::now().duration_since(UNIX_EPOCH).expect("Invalid time stamp").as_millis() as f64,
         oldest_message_id: String::new(),
-        content_types: HashMap::new()
-     };
+        content_types: HashMap::new(),
+        authors: HashMap::new(),
+        voices_used: vec![],
+        searched_websites: HashMap::new(),
+        website_paths: HashMap::new(),
+        words: HashMap::new()
+    };
 
     for conversation in conversations {
+        if let Some(voice) = conversation.voice {
+            analysis.voices_used.push(voice);
+        }
+
         for (key, value) in conversation.mapping.into_iter() {
             if key == "client-created-root" {
                 continue;
@@ -203,8 +246,29 @@ pub fn analyze_conversations(conversations: Vec<ConversationRoot>) -> Analysis {
             if let Some(message) = value.message {
                 if message.author.role == "system" {
                     analysis.messages_from_chatgpt += 1;
-                } else {
+                } else if message.author.role == "user" {
                     analysis.messages_from_user += 1;
+
+
+                    match &message.content.inner {
+                        ContentInner::TextField { text } => {
+                            for word in text.split(" ") {
+                                *analysis.words.entry(word.trim().to_string()).or_insert(0) += 1;
+                            }
+                        },
+                        ContentInner::TextObject { parts } => {
+                            for sentence in parts {
+                                for word in sentence.split(" ") {
+                                    *analysis.words.entry(word.trim().to_string()).or_insert(0) += 1;
+                                }
+                            }
+                        }
+                        _ => {}
+                    }
+                }
+
+                if let Some(name) = message.author.name {
+                    *analysis.authors.entry(name).or_insert(0) += 1;
                 }
 
                 if message.status != "finished_successfully" {
@@ -216,7 +280,19 @@ pub fn analyze_conversations(conversations: Vec<ConversationRoot>) -> Analysis {
                 if let Some(slug) = message.metadata.other.get("model_slug"){
                     *analysis.models_used.entry(slug.to_string()).or_insert(0) += 1
                 }
-                
+
+                if let Some(citations) = message.metadata.cite_metadata {
+                    for metadata in citations.metadata_list {
+                        if !metadata.url.starts_with("http") {
+                            continue;
+                        }
+                        let url = Url::parse(&metadata.url).expect(&format!("Invalid url {}", &metadata.url));
+                        
+                        *analysis.website_paths.entry(url.to_string()).or_insert(0) += 1;
+                        *analysis.searched_websites.entry(url.host_str().expect(format!("Invalid URL {}", message.id).as_str()).to_string()).or_insert(0) += 1
+                    }
+                }
+
                 if let Some(time) = message.create_time {
                     if time < analysis.oldest_message_time {
                         analysis.oldest_message_time = time;
@@ -224,9 +300,10 @@ pub fn analyze_conversations(conversations: Vec<ConversationRoot>) -> Analysis {
                     }
                     analysis.messages_sent.push(time);
                 }
+            
             }
-        }
         analysis.chat_amount += 1;
+        }
     }
 
     return analysis
