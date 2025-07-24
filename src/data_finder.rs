@@ -133,8 +133,11 @@ pub struct MetadataListItem {
     #[serde(alias="type")]
     metadata_type: String,
     
-    title: String,
-    url: String,
+    title: Option<String>,
+    name: Option<String>,
+    id: Option<String>,
+    source: Option<String>,
+    url: Option<String>,
     text: String,
     pub_date: Option<String>,
     extra: Option<MetadataCitationExtra>
@@ -283,13 +286,16 @@ pub fn analyze_conversations(conversations: Vec<ConversationRoot>) -> Analysis {
 
                 if let Some(citations) = message.metadata.cite_metadata {
                     for metadata in citations.metadata_list {
-                        if !metadata.url.starts_with("http") {
-                            continue;
+                        if let Some(url) = metadata.url {
+                            if !url.starts_with("http") {
+                                continue;
+                            }
+                            let url = Url::parse(&url).expect(&format!("Invalid url {}", &url));
+                            
+                            *analysis.website_paths.entry(url.to_string()).or_insert(0) += 1;
+                            *analysis.searched_websites.entry(url.host_str().expect(format!("Invalid URL {}", message.id).as_str()).to_string()).or_insert(0) += 1
                         }
-                        let url = Url::parse(&metadata.url).expect(&format!("Invalid url {}", &metadata.url));
-                        
-                        *analysis.website_paths.entry(url.to_string()).or_insert(0) += 1;
-                        *analysis.searched_websites.entry(url.host_str().expect(format!("Invalid URL {}", message.id).as_str()).to_string()).or_insert(0) += 1
+                     
                     }
                 }
 
