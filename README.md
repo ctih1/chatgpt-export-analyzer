@@ -24,5 +24,5 @@ Please extract it **into a folder**
 ![right click context menu hovering on extract archive button](.github/imgs/file_extract.png)
 
 ### 6. Run the program and drag-and-drop your folder into the terminal
-![termianl asking for input](.github/imgs/command_prompt.png.png)
+![terminal asking for input](.github/imgs/command_prompt.png)
 
