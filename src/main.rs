@@ -1,4 +1,4 @@
-use std::{collections::{HashMap}, path::Path, process::exit, time::SystemTime};
+use std::{alloc::System, collections::HashMap, path::Path, process::exit, time::{Duration, SystemTime}};
 
 
 use chrono::{DateTime, Datelike, Local, NaiveDate, NaiveTime};
@@ -40,6 +40,7 @@ fn main() {
     let tabs = vec!["Basic data", "Usage", "Resources"];
 
     let mut terminal = ratatui::init();
+    let mut last_button_click = SystemTime::now();
 
     loop {
         terminal.draw(|f| draw(f, &analysis, &feedback, selected_tab, &tabs)).expect("failed to draw frame");
@@ -47,6 +48,10 @@ fn main() {
             match key.code {
                 KeyCode::Char('q') => break,
                 KeyCode::Right => {
+                    if SystemTime::now().duration_since(last_button_click).expect("Invalid button click time!") < Duration::from_millis(100) {
+                        continue;
+                    }
+                    last_button_click = SystemTime::now();
                     if selected_tab == tabs.len() - 1 {
                         selected_tab = 0;
                     } else {
@@ -54,6 +59,10 @@ fn main() {
                     }
                 }
                 KeyCode::Left => {
+                    if SystemTime::now().duration_since(last_button_click).expect("Invalid button click time!") < Duration::from_millis(100) {
+                        continue;
+                    }
+                    last_button_click = SystemTime::now();
                     if selected_tab == 0 {
                         selected_tab = tabs.len() -1
                     } else {
