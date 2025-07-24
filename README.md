@@ -1,6 +1,8 @@
 # chatgpt-analyzer
 Analyze your ChatGPT stats 
 
+![the software](.github/imgs/screenshot_data.png)
+
 ## How to get the sweet data?
 ### 1. Go to https://chatgpt.com
 
@@ -19,4 +21,5 @@ Please extract it **into a folder**
 ![right click context menu hovering on extract archive button](.github/imgs/file_extract.png)
 
 ### 6. Run the program and drag-and-drop your folder into the terminal
-![account settings data control tab active pressing "export" button](.github/imgs/command_run.png)
+![termianl asking for input](.github/imgs/command_prompt.png.png)
+
