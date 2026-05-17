@@ -2,7 +2,7 @@ use std::{collections::HashMap, path::Path, process::exit, time::{Duration, Syst
 
 
 use chrono::{DateTime, Datelike, Local, NaiveDate, NaiveTime};
-use crossterm::event::{self, Event, KeyCode};
+use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind};
 use prompted::{input};
 use ratatui::{layout::{ Constraint, Layout}, style::{Color, Style, Stylize}, text::{Line,  Text}, widgets::{ BarChart, Block, List,  Tabs}, Frame};
 use Constraint::{Fill, Length, Min};
@@ -37,16 +37,36 @@ fn main() {
     println!("Raw timestamps sample: {:?}", &analysis.messages_sent.iter().take(5).collect::<Vec<_>>());
 
     let mut selected_tab = 0;
+    let mut paginator_months = 0;
+    let mut zoom_level = 5;
+
     let tabs = vec!["Basic data", "Usage", "Resources"];
 
     let mut terminal = ratatui::init();
     let mut last_button_click = SystemTime::now();
 
     loop {
-        terminal.draw(|f| draw(f, &analysis, &feedback, selected_tab, &tabs)).expect("failed to draw frame");
+        terminal.draw(|f| draw(f, &analysis, &feedback, selected_tab, paginator_months, zoom_level, &tabs)).expect("failed to draw frame");
         if let Event::Key(key) = event::read().expect("failed to read event") {
+            if key.kind != KeyEventKind::Press { continue };
             match key.code {
                 KeyCode::Char('q') => break,
+                KeyCode::Char('k') => {
+                    if(paginator_months > 0) {
+                        paginator_months -= 1;
+                    }
+                }
+                KeyCode::Char('l') => {
+                    paginator_months += 1;
+                }
+                KeyCode::Char('i') => {
+                    if(zoom_level > 1) {
+                        zoom_level -= 1;
+                    }
+                }
+                KeyCode::Char('o') => {
+                    zoom_level += 1;
+                }
                 KeyCode::Right => {
                     if SystemTime::now().duration_since(last_button_click).expect("Invalid button click time!") < Duration::from_millis(100) {
                         continue;
@@ -87,7 +107,7 @@ fn hashmap_to_ordered_vec(map: &HashMap<String, i32>) -> Vec<String> {
     return results
 }
 
-fn draw(frame: &mut Frame, analysis: &Analysis, feedback: &Feedback, selected_tab: usize, tabs: &Vec<&'static str>) {
+fn draw(frame: &mut Frame, analysis: &Analysis, feedback: &Feedback, selected_tab: usize, paginator_months: usize, zoom_level: usize, tabs: &Vec<&'static str>) {
     let vertical = Layout::vertical([Length(3), Min(0), Length(1)]);
     let [title_area, mid_area, status_area] = vertical.areas(frame.area());
 
@@ -114,7 +134,7 @@ fn draw(frame: &mut Frame, analysis: &Analysis, feedback: &Feedback, selected_ta
 
 
     frame.render_widget(tabs, title_area);
-    frame.render_widget(Line::from("Q to quit, <- and -> to change tabs"), status_area);
+    frame.render_widget(Line::from("Q to quit, <- and -> to change tabs, K and L to traverse graph, I to zoom out, O to zoom in"), status_area);
 
 
     match selected_tab {
@@ -157,11 +177,22 @@ fn draw(frame: &mut Frame, analysis: &Analysis, feedback: &Feedback, selected_ta
 
         1 => {
             let mut date_counts: HashMap<(i32, u32), u64> = HashMap::new();
-            
+
+            let first_date = (DateTime::from_timestamp(analysis.oldest_message_time.trunc() as i64, 0)).unwrap().naive_utc();
+            let months_visible = (frame.area().width / zoom_level as u16) as u32;
+            let max_abs_month = first_date.month() + months_visible + paginator_months as u32;
+            let min_abs_month = max_abs_month - months_visible;
+
+
             for timestamp in &analysis.messages_sent {
                 if let Some(datetime) = DateTime::from_timestamp(timestamp.trunc() as i64, 0) {
                     let naive = datetime.naive_utc();
-                    *date_counts.entry((naive.year(), naive.month())).or_insert(0) += 1;
+                    let (year, month) = (naive.year(), naive.month());
+                    let abs_month = month + (year as u32 - first_date.year() as u32) * 12;
+
+                    if(abs_month > max_abs_month || abs_month < min_abs_month) { continue; }
+
+                    *date_counts.entry((year, month)).or_insert(0) += 1;
                 }
             }
 
@@ -188,7 +219,7 @@ fn draw(frame: &mut Frame, analysis: &Analysis, feedback: &Feedback, selected_ta
 
             let chart = BarChart::default()
                 .block(Block::bordered().title("Messages per month (month-year)"))
-                .bar_width(5)
+                .bar_width(zoom_level.try_into().unwrap_or_default())
                 .data(&bar_data)
                 .style(Style::default().fg(Color::Green));
 

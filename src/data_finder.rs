@@ -1,7 +1,9 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::vec;
 use std::{
     fs::File,
+    fs,
     io::Read,
     path::Path,
     time::{SystemTime, UNIX_EPOCH},
@@ -38,7 +40,8 @@ pub enum AsyncStatus {
     Str(String),
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Default)]
+#[serde(default)]
 pub struct ConversationRoot {
     pub title: String,
     pub create_time: f64,
@@ -53,8 +56,8 @@ pub struct ConversationRoot {
     pub gizmo_type: Option<String>,
     pub is_archived: bool,
     pub is_starred: Option<bool>,
-    pub safe_urls: Vec<String>,
-    pub blocked_urls: Vec<String>,
+    pub safe_urls: Option<Vec<String>>,
+    pub blocked_urls: Option<Vec<String>>,
     pub default_model_slug: Option<String>,
     pub conversation_origin: Option<String>,
     pub voice: Option<String>,
@@ -183,7 +186,7 @@ pub struct MessageMetadata {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct UserContextData {
-    pub about_user_message: String,
+    pub about_user_message: Option<String>,
     pub about_model_message: Option<String>,
 }
 
@@ -232,13 +235,31 @@ pub fn find_feedback(path: &Path) -> Feedback {
 }
 
 pub fn load_conversations(path: &Path) -> Vec<ConversationRoot> {
-    let mut file =
-        File::open(path.join("conversations.json")).expect("Failed to open conversations!");
-    let mut content = String::new();
+    let mut conversations: Vec<ConversationRoot> = vec![];
 
-    file.read_to_string(&mut content)
-        .expect("Failed to read conversations.json content!");
-    let conversations: Vec<ConversationRoot> = serde_json::from_str(&content).unwrap();
+    for _path in fs::read_dir(path).unwrap() {
+        let path = _path.unwrap();
+
+        if !path.file_name().to_str().unwrap().contains("conversations-") { continue };
+        println!("Loading {}", path.file_name().to_str().unwrap());
+
+        
+        let mut file =
+            File::open(path.path()).expect(&format!("Failed to open conversation {}!", path.file_name().to_str().unwrap()));
+        let mut content = String::new();
+
+        file.read_to_string(&mut content)
+            .expect(&format!("Failed to read {}.json content!", path.file_name().to_str().unwrap()));
+
+        let jason: Vec<ConversationRoot> = serde_json::from_str(&content).unwrap();
+
+        for conversation in jason {
+
+            conversations.push(conversation);
+            
+        }
+    }
+
 
     return conversations;
 }
