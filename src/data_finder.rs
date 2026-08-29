@@ -74,7 +74,7 @@ pub struct MessageNode {
     pub id: String,
     pub message: Option<Message>,
     pub parent: Option<String>,
-    pub children: Vec<String>,
+    pub children: Option<Vec<String>>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -84,11 +84,11 @@ pub struct Message {
     pub create_time: Option<f64>,
     pub update_time: Option<f64>,
     pub content: MessageContent,
-    pub status: String,
+    pub status: Option<String>,
     pub end_turn: Option<bool>,
-    pub weight: f64,
-    pub metadata: MessageMetadata,
-    pub recipient: String,
+    pub weight: Option<f64>,
+    pub metadata: Option<MessageMetadata>,
+    pub recipient: Option<String>,
     pub channel: Option<String>,
 }
 
@@ -96,7 +96,7 @@ pub struct Message {
 pub struct Author {
     pub role: String,
     pub name: Option<String>,
-    pub metadata: HashMap<String, serde_json::Value>,
+    pub metadata: Option<HashMap<String, serde_json::Value>>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -322,7 +322,7 @@ pub fn analyze_conversations(conversations: Vec<ConversationRoot>) -> Analysis {
                     *analysis.authors.entry(name).or_insert(0) += 1;
                 }
 
-                if message.status != "finished_successfully" {
+                if message.status.is_none() || message.status.unwrap() != "finished_successfully" {
                     analysis.unfinished_messages += 1;
                 }
 
@@ -331,11 +331,16 @@ pub fn analyze_conversations(conversations: Vec<ConversationRoot>) -> Analysis {
                     .entry(message.content.content_type)
                     .or_insert(0) += 1;
 
-                if let Some(slug) = message.metadata.other.get("model_slug") {
+                if message.metadata.is_none() {
+                    continue;
+                }
+                let metadata = message.metadata.unwrap();
+                
+                if let Some(slug) = metadata.other.get("model_slug") {
                     *analysis.models_used.entry(slug.to_string()).or_insert(0) += 1
                 }
 
-                if let Some(citations) = message.metadata.cite_metadata {
+                if let Some(citations) = metadata.cite_metadata {
                     for metadata in citations.metadata_list {
                         if let Some(url) = metadata.url {
                             if !url.starts_with("http") {
